@@ -1,86 +1,130 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { VocabItem } from '../types';
+import { useUser } from '../contexts/UserContext';
 
 export const useVocab = () => {
+  const { username } = useUser();
   const [vocab, setVocab] = useState<VocabItem[]>([]);
   const [streak, setStreak] = useState(0);
   const [lastStudyDate, setLastStudyDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Helper to migrate data from single string to arrays
-  const migrateData = (data: any[]): VocabItem[] => {
-    return data.map(item => ({
-      ...item,
-      chinese: Array.isArray(item.chinese) ? item.chinese : [item.chinese],
-      vietnamese: Array.isArray(item.vietnamese) ? item.vietnamese : [item.vietnamese],
-    }));
-  };
-
-  // Load from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem('chinese_vocab_srs');
-    const storedStreak = localStorage.getItem('chinese_vocab_streak');
-    const storedLastDate = localStorage.getItem('chinese_vocab_last_date');
-
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setVocab(migrateData(parsed).map(item => ({
-          ...item,
-          updatedAt: item.updatedAt || item.createdAt
-        })));
-      } catch (e) {
-        console.error("Failed to parse local storage", e);
+  // Fetch initial data from MongoDB
+  const fetchData = useCallback(async () => {
+    if (!username) return;
+    
+    setLoading(true);
+    try {
+      // 1. Fetch vocabulary
+      const vocabRes = await fetch(`/api/vocab?username=${encodeURIComponent(username)}`);
+      if (vocabRes.ok) {
+        const data = await vocabRes.json();
+        setVocab(data);
       }
+
+      // 2. Fetch user stats
+      const userRes = await fetch(`/api/user?username=${encodeURIComponent(username)}`);
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        setStreak(userData.streak || 0);
+        setLastStudyDate(userData.lastStudyDate || null);
+      }
+    } catch (e) {
+      console.error("Failed to fetch data from MongoDB", e);
+    } finally {
+      setLoading(false);
     }
+  }, [username]);
 
-    if (storedStreak) setStreak(parseInt(storedStreak));
-    if (storedLastDate) setLastStudyDate(storedLastDate);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-    setLoading(false);
-  }, []);
+  // Add vocabulary to MongoDB
+  const addVocab = async (item: { chinese: string[], pinyin: string, vietnamese: string[] }) => {
+    if (!username) return;
 
-  // Save to localStorage
-  const saveVocab = (newList: VocabItem[]) => {
-    setVocab(newList);
-    localStorage.setItem('chinese_vocab_srs', JSON.stringify(newList));
-  };
-
-  const addVocab = (item: { chinese: string[], pinyin: string, vietnamese: string[] }) => {
-    const newItem: VocabItem = {
+    const newItem: Partial<VocabItem> & { username: string } = {
       ...item,
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
+      username,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       level: 0,
     };
-    saveVocab([...vocab, newItem]);
+
+    try {
+      const res = await fetch('/api/vocab', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newItem),
+      });
+
+      if (res.ok) {
+        const createdItem = await res.json();
+        setVocab(prev => [createdItem, ...prev]);
+      }
+    } catch (e) {
+      console.error("Failed to add vocab", e);
+    }
   };
 
-  const updateVocab = (id: string, updates: Partial<VocabItem>) => {
-    const newList = vocab.map((item) =>
-      item.id === id ? { ...item, ...updates, updatedAt: Date.now() } : item
-    );
-    saveVocab(newList);
+  // Update vocabulary in MongoDB
+  const updateVocab = async (id: string, updates: Partial<VocabItem>) => {
+    if (!username) return;
+
+    try {
+      const res = await fetch('/api/vocab', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, username, ...updates }),
+      });
+
+      if (res.ok) {
+        setVocab(prev => prev.map(item => 
+          item.id === id ? { ...item, ...updates, updatedAt: Date.now() } : item
+        ));
+      }
+    } catch (e) {
+      console.error("Failed to update vocab", e);
+    }
   };
 
-  const deleteVocab = (id: string) => {
-    const newList = vocab.filter((item) => item.id !== id);
-    saveVocab(newList);
+  // Delete vocabulary from MongoDB
+  const deleteVocab = async (id: string) => {
+    if (!username) return;
+
+    try {
+      const res = await fetch(`/api/vocab?id=${id}&username=${encodeURIComponent(username)}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        setVocab(prev => prev.filter(item => item.id !== id));
+      }
+    } catch (e) {
+      console.error("Failed to delete vocab", e);
+    }
   };
 
-  const recordStudySession = (ids?: string[]) => {
+  // Record study session and update stats in MongoDB
+  const recordStudySession = async (ids?: string[]) => {
+    if (!username) return;
+    
     const now = Date.now();
     const today = new Date().toISOString().split('T')[0];
     
     // 1. Update individual word timestamps
     if (ids && ids.length > 0) {
-      const newList = vocab.map(item => 
+      // Optimistic update
+      setVocab(prev => prev.map(item => 
         ids.includes(item.id) ? { ...item, lastReview: now } : item
-      );
-      saveVocab(newList);
+      ));
+
+      // Batch update in background
+      Promise.all(ids.map(id => updateVocab(id, { lastReview: now })));
     }
 
     // 2. Update overall study streak
@@ -100,9 +144,19 @@ export const useVocab = () => {
 
     setStreak(newStreak);
     setLastStudyDate(today);
-    localStorage.setItem('chinese_vocab_streak', newStreak.toString());
-    localStorage.setItem('chinese_vocab_last_date', today);
+
+    // Sync stats to DB
+    try {
+      await fetch('/api/user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, streak: newStreak, lastStudyDate: today }),
+      });
+    } catch (e) {
+      console.error("Failed to sync stats", e);
+    }
   };
 
   return { vocab, addVocab, updateVocab, deleteVocab, loading, streak, recordStudySession };
 };
+

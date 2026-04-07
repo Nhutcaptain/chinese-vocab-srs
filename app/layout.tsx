@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
+import { UserProvider } from "@/lib/contexts/UserContext";
+import { LoginGuard } from "@/components/LoginGuard";
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["vietnamese", "latin"],
@@ -21,11 +23,16 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className={`${beVietnamPro.variable} font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900`}>
-        <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
-        <main className="min-h-screen container mx-auto px-4 py-8">
-          {children}
-        </main>
+        <UserProvider>
+          <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
+          <LoginGuard>
+            <main className="min-h-screen container mx-auto px-4 py-8">
+              {children}
+            </main>
+          </LoginGuard>
+        </UserProvider>
       </body>
     </html>
   );
 }
+
