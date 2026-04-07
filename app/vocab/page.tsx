@@ -116,23 +116,13 @@ export default function VocabPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex gap-2 w-full md:w-auto">
-            <button 
-              onClick={() => { unlockAudio(); playChinese('你好'); }}
-              className="flex-1 md:flex-none px-6 h-[60px] md:h-[72px] bg-white/70 backdrop-blur-xl border-2 border-slate-100 rounded-2xl flex items-center justify-center gap-3 text-slate-600 hover:text-indigo-600 hover:border-indigo-500/30 hover:bg-white transition-all font-black shadow-sm group active:scale-95"
-              title="Kiểm tra loa"
-            >
-              <Volume2 className="w-6 h-6 transition-transform group-hover:scale-110" />
-              <span className="md:hidden lg:inline">Kiểm tra loa</span>
-            </button>
-            <button 
-              onClick={() => setIsAdding(true)}
-              className="px-6 h-[60px] md:h-[72px] bg-indigo-600 text-white rounded-2xl flex items-center justify-center gap-3 hover:bg-indigo-700 transition-all font-black shadow-xl shadow-indigo-200 group active:scale-95 shrink-0"
-            >
-              <Plus className="w-6 h-6 transition-transform group-hover:rotate-90" />
-              <span className="hidden sm:inline">Thêm từ mới</span>
-            </button>
-          </div>
+          <button 
+            onClick={() => setIsAdding(true)}
+            className="w-full md:w-auto px-6 h-[60px] md:h-[72px] bg-indigo-600 text-white rounded-2xl flex items-center justify-center gap-3 hover:bg-indigo-700 transition-all font-black shadow-xl shadow-indigo-200 group active:scale-95 shrink-0"
+          >
+            <Plus className="w-6 h-6 transition-transform group-hover:rotate-90" />
+            <span>Thêm từ mới</span>
+          </button>
         </div>
       </div>
 
@@ -165,18 +155,20 @@ export default function VocabPage() {
                   </div>
                   <p className="text-indigo-500 font-bold">{item.pinyin}</p>
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   <button 
                     onClick={() => handleEdit(item)}
-                    className="p-2 text-slate-400 hover:text-blue-500 transition-colors"
+                    className="p-3 md:p-2 bg-indigo-50 md:bg-transparent text-indigo-600 md:text-slate-400 hover:text-blue-500 transition-colors rounded-xl md:rounded-lg"
+                    title="Sửa"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Edit2 className="w-5 h-5 md:w-4 md:h-4" />
                   </button>
                   <button 
                     onClick={() => deleteVocab(item.id)}
-                    className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+                    className="p-3 md:p-2 bg-rose-50 md:bg-transparent text-rose-600 md:text-slate-400 hover:text-rose-500 transition-colors rounded-xl md:rounded-lg"
+                    title="Xóa"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-5 h-5 md:w-4 md:h-4" />
                   </button>
                 </div>
               </div>
