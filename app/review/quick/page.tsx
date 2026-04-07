@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useVocab } from '@/lib/hooks/useVocab';
-import { ChevronLeft, Timer, CheckCircle, XCircle, RotateCcw, Volume2 } from 'lucide-react';
+import { ChevronLeft, Timer, CheckCircle, XCircle, RotateCcw, Volume2, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { playChinese, unlockAudio, stopAudio } from '@/lib/utils/audio';
@@ -23,6 +23,9 @@ function QuickReviewContent() {
   const [score, setScore] = useState({ correct: 0, wrong: 0 });
   const [results, setResults] = useState<any[]>([]);
   const [currentSession, setCurrentSession] = useState<any[]>([]);
+  const [isFeedback, setIsFeedback] = useState(false);
+  const [lastCorrect, setLastCorrect] = useState(false);
+  const [selectedType, setSelectedType] = useState<'all' | 'vocab' | 'idiom'>('all');
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -42,6 +45,10 @@ function QuickReviewContent() {
       });
     }
 
+    if (selectedType !== 'all') {
+      filtered = filtered.filter(v => (v.type || 'vocab') === selectedType);
+    }
+
     const session = filtered.sort(() => Math.random() - 0.5).slice(0, wordCount);
     setCurrentSession(session);
     setGameState('playing');
@@ -50,33 +57,43 @@ function QuickReviewContent() {
     setScore({ correct: 0, wrong: 0 });
     setUserInput('');
     setResults([]);
+    setIsFeedback(false);
+    setLastCorrect(false);
   };
 
   useEffect(() => {
-    if (gameState === 'playing' && timeLeft > 0) {
+    if (gameState === 'playing' && timeLeft > 0 && !isFeedback) {
       timerRef.current = setInterval(() => {
         setTimeLeft(prev => prev - 1);
       }, 1000);
-    } else if (timeLeft === 0 && gameState === 'playing') {
+    } else if (timeLeft === 0 && gameState === 'playing' && !isFeedback) {
       setGameState('results');
       recordStudySession(currentSession.map(v => v.id));
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [gameState, timeLeft, currentSession, recordStudySession]);
+  }, [gameState, timeLeft, isFeedback, currentSession, recordStudySession]);
 
   useEffect(() => {
-    if (gameState === 'playing' && currentSession[currentIndex]) {
+    if (isFeedback && currentSession[currentIndex]) {
       playChinese(currentSession[currentIndex].chinese.join(', '));
     }
-  }, [currentIndex, gameState, currentSession]);
+  }, [isFeedback, currentIndex, currentSession]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isFeedback) {
+      handleNext();
+      return;
+    }
+
     const currentWord = currentSession[currentIndex];
     
-    const isCorrect = currentWord.vietnamese.some(
-      (vi: string) => userInput.trim().toLowerCase() === vi.trim().toLowerCase()
+    const isCorrect = currentWord.chinese.some(
+      (zh: string) => userInput.trim() === zh.trim()
     );
+
+    setLastCorrect(isCorrect);
+    setIsFeedback(true);
 
     setScore(prev => ({
       correct: prev.correct + (isCorrect ? 1 : 0),
@@ -89,11 +106,14 @@ function QuickReviewContent() {
       correct: isCorrect,
       correctMeanings: currentWord.vietnamese
     }]);
+  };
 
+  const handleNext = () => {
     if (currentIndex + 1 < currentSession.length) {
       stopAudio();
       setCurrentIndex(prev => prev + 1);
       setUserInput('');
+      setIsFeedback(false);
     } else {
       stopAudio();
       setGameState('results');
@@ -109,7 +129,7 @@ function QuickReviewContent() {
         <Link href="/" className="p-2 hover:bg-slate-200 rounded-full transition">
           <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
         </Link>
-        <h1 className="text-xl md:text-2xl font-black">Nhập nghĩa nhanh</h1>
+        <h1 className="text-xl md:text-2xl font-black">Luyện dịch Việt - Trung</h1>
       </div>
 
       <AnimatePresence mode="wait">
@@ -140,6 +160,32 @@ function QuickReviewContent() {
                   ))}
                 </div>
               </div>
+
+              <div>
+                <label className="block text-xs md:text-sm font-bold text-slate-500 mb-3 uppercase tracking-widest">Loại từ vựng</label>
+                <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-2xl">
+                  {[
+                    { id: 'all', label: 'Tất cả' },
+                    { id: 'vocab', label: 'Từ vựng' },
+                    { id: 'idiom', label: 'Thành ngữ' }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setSelectedType(tab.id as any)}
+                      className={cn(
+                        "py-3 rounded-xl text-xs font-black transition-all",
+                        selectedType === tab.id 
+                          ? "bg-white text-indigo-600 shadow-sm" 
+                          : "text-slate-400 hover:text-slate-600"
+                      )}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs md:text-sm font-bold text-slate-500 mb-3 uppercase tracking-widest">Thời gian: {timeLimit}s</label>
                 <input 
@@ -166,7 +212,7 @@ function QuickReviewContent() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.1 }}
-            className="flex flex-col items-center gap-10"
+            className="flex flex-col items-center gap-6 md:gap-10"
           >
             <div className="flex flex-col md:flex-row justify-between w-full glass p-4 md:p-6 rounded-2xl md:rounded-[2rem] gap-4">
               <div className="flex items-center justify-between md:justify-start gap-3">
@@ -181,13 +227,13 @@ function QuickReviewContent() {
               <div className="hidden md:block text-xl font-black text-slate-300">
                 <span className="text-indigo-600">{currentIndex + 1}</span> / {currentSession.length}
               </div>
-              <div className="flex justify-between md:justify-end gap-4">
-                <span className="text-emerald-500 font-black px-3 py-1 bg-emerald-50 rounded-full text-sm md:text-base">✓ {score.correct}</span>
-                <span className="text-rose-500 font-black px-3 py-1 bg-rose-50 rounded-full text-sm md:text-base">✗ {score.wrong}</span>
+              <div className="flex justify-between md:justify-end gap-3 md:gap-4">
+                <span className="text-emerald-500 font-black px-3 py-1 bg-emerald-50 rounded-full text-xs md:text-base">✓ {score.correct}</span>
+                <span className="text-rose-500 font-black px-3 py-1 bg-rose-50 rounded-full text-xs md:text-base">✗ {score.wrong}</span>
               </div>
             </div>
 
-            <div className="glass w-full p-8 md:p-20 rounded-3xl md:rounded-[3.5rem] text-center shadow-2xl relative overflow-hidden border border-white">
+            <div className="glass w-full p-8 md:p-16 rounded-3xl md:rounded-[3.5rem] text-center shadow-2xl relative overflow-hidden border border-white">
               <div className="absolute top-0 left-0 w-full h-1 bg-slate-50">
                 <motion.div 
                   className="h-full bg-indigo-600 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
@@ -195,31 +241,80 @@ function QuickReviewContent() {
                   animate={{ width: `${((currentIndex) / currentSession.length) * 100}%` }}
                 />
               </div>
-              <div className="flex flex-wrap justify-center gap-2 md:gap-4 mb-4 items-center">
-                {currentSession[currentIndex].chinese.map((zh: string, i: number) => (
-                  <span key={i} className="text-6xl md:text-8xl font-black text-slate-800 tracking-tighter">
-                    {zh}{i < currentSession[currentIndex].chinese.length - 1 ? ',' : ''}
-                  </span>
-                ))}
-                <button 
-                  onClick={() => playChinese(currentSession[currentIndex].chinese.join(', '))}
-                  className="p-2 md:p-3 bg-indigo-50 text-indigo-600 rounded-xl md:rounded-2xl hover:bg-indigo-600 hover:text-white transition-colors"
-                >
-                  <Volume2 className="w-6 h-6 md:w-8 md:h-8" />
-                </button>
-              </div>
-              <p className="text-lg md:text-2xl text-indigo-500 font-black mb-8 md:mb-16 tracking-widest uppercase">{currentSession[currentIndex].pinyin}</p>
 
-              <form onSubmit={handleSubmit} className="relative max-w-sm md:max-w-md mx-auto">
-                <input 
-                  autoFocus
-                  placeholder="Nghĩa tiếng Việt..."
-                  className="w-full text-center py-4 md:py-6 glass border-2 border-indigo-50 rounded-2xl md:rounded-3xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none text-xl md:text-3xl font-black transition-all placeholder:text-slate-300 shadow-inner"
-                  value={userInput}
-                  onChange={e => setUserInput(e.target.value)}
-                />
-                <p className="hidden md:block text-slate-400 text-sm mt-6 font-bold uppercase tracking-widest opacity-60">Nhấn Enter để gửi</p>
-              </form>
+              <AnimatePresence mode="wait">
+                {!isFeedback ? (
+                  <motion.div
+                    key="question"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="space-y-8"
+                  >
+                    <div className="flex flex-wrap justify-center gap-2 md:gap-4 mb-4 items-center min-h-[140px]">
+                      {currentSession[currentIndex].vietnamese.map((vi: string, i: number) => (
+                        <span key={i} className="text-4xl md:text-6xl font-black text-indigo-600 tracking-tight">
+                          {vi}{i < currentSession[currentIndex].vietnamese.length - 1 ? ',' : ''}
+                        </span>
+                      ))}
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="relative max-w-sm md:max-w-md mx-auto">
+                      <input 
+                        autoFocus
+                        placeholder="Nhập chữ Hán..."
+                        className="w-full text-center py-4 md:py-6 glass border-2 border-indigo-50 rounded-2xl md:rounded-3xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none text-xl md:text-3xl font-bold transition-all placeholder:text-slate-300 shadow-inner"
+                        value={userInput}
+                        onChange={e => setUserInput(e.target.value)}
+                      />
+                      <p className="hidden md:block text-slate-400 text-sm mt-6 font-bold uppercase tracking-widest opacity-60">Nhấn Enter để kiểm tra</p>
+                    </form>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="feedback"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="space-y-6"
+                  >
+                    <div className={cn(
+                      "inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-black uppercase tracking-widest mb-4",
+                      lastCorrect ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"
+                    )}>
+                      {lastCorrect ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                      {lastCorrect ? 'Chính xác' : 'Chưa đúng'}
+                    </div>
+
+                    <div className="flex flex-wrap justify-center gap-4 md:gap-6 mb-2 items-center min-h-[120px]">
+                      {currentSession[currentIndex].chinese.map((zh: string, i: number) => (
+                        <div key={i} className="flex flex-col items-center gap-1">
+                          <span className="text-6xl md:text-8xl font-black text-slate-800 tracking-tighter">
+                            {zh}
+                          </span>
+                          <button 
+                            onClick={() => playChinese(zh)}
+                            className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-colors"
+                          >
+                            <Volume2 className="w-5 h-5 md:w-6 md:h-6" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <p className="text-xl md:text-3xl text-indigo-500 font-black tracking-widest uppercase mb-8">
+                      {Array.isArray(currentSession[currentIndex].pinyin) ? currentSession[currentIndex].pinyin.join(' / ') : currentSession[currentIndex].pinyin}
+                    </p>
+
+                    <button 
+                      onClick={handleNext}
+                      autoFocus
+                      className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-2 mx-auto mt-8"
+                    >
+                      Tiếp theo <ArrowRight className="w-6 h-6" />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         )}
@@ -229,7 +324,7 @@ function QuickReviewContent() {
             key="results"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass p-12 rounded-[2.5rem] shadow-xl"
+            className="glass p-8 md:p-12 rounded-[2.5rem] shadow-xl"
           >
             <h2 className="text-2xl md:text-4xl font-black mb-2 tracking-tight">Thống kê buổi học</h2>
             <p className="text-slate-400 mb-8 md:mb-10 font-bold text-xs md:text-sm uppercase tracking-widest">Bạn đã hoàn thành thử thách!</p>

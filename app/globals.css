@@ -26,7 +26,7 @@
 }
 
 @theme {
-  --font-sans: var(--font-be-vietnam);
+  --font-sans: "Times New Roman", Times, "SimSun", "Songti SC", serif;
   --color-primary: var(--primary);
   --color-secondary: var(--secondary);
   --color-accent: var(--accent);

@@ -5,6 +5,7 @@ import { useVocab } from '@/lib/hooks/useVocab';
 import { ChevronLeft, Shuffle, Volume2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { playChinese, unlockAudio, stopAudio } from '@/lib/utils/audio';
+import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -17,6 +18,7 @@ function FlashcardsContent() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [shuffledVocab, setShuffledVocab] = useState<any[]>([]);
   const [showStart, setShowStart] = useState(true);
+  const [selectedType, setSelectedType] = useState<'all' | 'vocab' | 'idiom'>('all');
 
   useEffect(() => {
     if (vocab.length > 0 && shuffledVocab.length === 0) {
@@ -34,9 +36,13 @@ function FlashcardsContent() {
         });
       }
 
+      if (selectedType !== 'all') {
+        filtered = filtered.filter(v => (v.type || 'vocab') === selectedType);
+      }
+
       setShuffledVocab(filtered.sort(() => Math.random() - 0.5));
     }
-  }, [vocab, filter, shuffledVocab.length]);
+  }, [vocab, filter, shuffledVocab.length, selectedType]);
 
   const startReview = () => {
     setShowStart(false);
@@ -120,6 +126,31 @@ function FlashcardsContent() {
             <div className="glass p-8 md:p-12 rounded-3xl md:rounded-[3rem] shadow-2xl max-w-sm w-full mx-auto">
                <Volume2 className="w-16 h-16 md:w-20 md:h-20 text-indigo-600 mx-auto mb-6 md:mb-8 animate-pulse" />
                <h2 className="text-2xl md:text-3xl font-black mb-4">Sẵn sàng ôn tập?</h2>
+               
+               <div className="flex p-1 bg-slate-100 rounded-2xl mb-8 w-full border border-slate-200/50">
+                 {[
+                   { id: 'all', label: 'Tất cả' },
+                   { id: 'vocab', label: 'Từ vựng' },
+                   { id: 'idiom', label: 'Thành ngữ' }
+                 ].map((tab) => (
+                   <button
+                     key={tab.id}
+                     onClick={() => {
+                       setSelectedType(tab.id as any);
+                       setShuffledVocab([]); // Trigger re-filter
+                     }}
+                     className={cn(
+                       "flex-1 py-3 rounded-xl text-xs font-black transition-all",
+                       selectedType === tab.id 
+                         ? "bg-white text-indigo-600 shadow-sm" 
+                         : "text-slate-400 hover:text-slate-600"
+                     )}
+                   >
+                     {tab.label}
+                   </button>
+                 ))}
+               </div>
+
                <p className="text-slate-500 font-bold mb-8 md:mb-10 text-sm md:text-base leading-relaxed">Nhấn nút bên dưới để bắt đầu học.</p>
                <button 
                 onClick={startReview}
@@ -147,14 +178,24 @@ function FlashcardsContent() {
                 transition={{ type: 'spring', stiffness: 200, damping: 20 }}
               >
                 <div className="absolute inset-0 backface-hidden glass flex flex-col items-center justify-center p-6 md:p-12 rounded-3xl md:rounded-[3.5rem] shadow-2xl border border-white">
-                  <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4 mb-4">
+                  <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mb-4">
                     {currentItem.chinese.map((zh: string, i: number) => (
-                      <span key={i} className="text-5xl md:text-6xl font-black text-slate-800 tracking-tight">
-                        {zh}{i < currentItem.chinese.length - 1 ? ',' : ''}
-                      </span>
+                      <div key={i} className="flex items-center gap-2 group/item">
+                        <span className="text-5xl md:text-6xl font-black text-slate-800 tracking-tight">
+                          {zh}{i < currentItem.chinese.length - 1 ? ',' : ''}
+                        </span>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); playChinese(zh); }}
+                          className="text-slate-300 hover:text-indigo-600 transition p-1.5 hover:bg-indigo-50 rounded-xl group-hover/item:text-slate-400"
+                        >
+                           <Volume2 className="w-5 h-5" />
+                        </button>
+                      </div>
                     ))}
                   </div>
-                  <span className="text-xl md:text-2xl text-indigo-500 font-black mb-8 md:mb-10">{currentItem.pinyin}</span>
+                  <span className="text-xl md:text-2xl text-indigo-500 font-black mb-8 md:mb-10">
+                    {Array.isArray(currentItem.pinyin) ? currentItem.pinyin.join(', ') : currentItem.pinyin}
+                  </span>
                   <button 
                     onClick={(e) => { e.stopPropagation(); playChinese(currentItem.chinese.join(', ')); }}
                     className="p-3 md:p-4 bg-indigo-50 rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition duration-500"
@@ -175,12 +216,22 @@ function FlashcardsContent() {
                         </span>
                       ))}
                     </div>
-                    <p className="text-indigo-500 font-bold text-sm md:text-base">{currentItem.pinyin}</p>
-                    <div className="mt-4 md:mt-8 flex flex-wrap justify-center gap-1 md:gap-2">
+                    <p className="text-indigo-500 font-bold text-sm md:text-base">
+                      {Array.isArray(currentItem.pinyin) ? currentItem.pinyin.join(', ') : currentItem.pinyin}
+                    </p>
+                    <div className="mt-4 md:mt-8 flex flex-wrap justify-center gap-2 md:gap-3">
                        {currentItem.chinese.map((zh: string, i: number) => (
-                         <span key={i} className="px-2 py-0.5 md:px-3 md:py-1 bg-white/50 rounded-lg text-slate-400 font-bold text-[10px] md:text-sm">
-                           {zh}
-                         </span>
+                         <div key={i} className="flex items-center gap-1 group/item-back">
+                            <span className="px-2 py-0.5 md:px-3 md:py-1 bg-white/50 rounded-lg text-slate-400 font-bold text-[10px] md:text-sm">
+                              {zh}
+                            </span>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); playChinese(zh); }}
+                              className="text-slate-300 hover:text-indigo-600 transition p-1 hover:bg-white rounded-lg group-hover/item-back:text-slate-400"
+                            >
+                               <Volume2 className="w-3.5 h-3.5" />
+                            </button>
+                         </div>
                        ))}
                     </div>
                     <button 

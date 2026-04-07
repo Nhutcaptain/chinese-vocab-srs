@@ -43,7 +43,7 @@ export const useVocab = () => {
   }, [fetchData]);
 
   // Add vocabulary to MongoDB
-  const addVocab = async (item: { chinese: string[], pinyin: string, vietnamese: string[] }) => {
+  const addVocab = async (item: { chinese: string[], pinyin: string[], vietnamese: string[], type?: 'vocab' | 'idiom' }) => {
     if (!username) return;
 
     const newItem: Partial<VocabItem> & { username: string } = {

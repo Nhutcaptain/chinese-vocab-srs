@@ -25,6 +25,7 @@ function QuizContent() {
   const [score, setScore] = useState({ correct: 0, wrong: 0 });
   const [results, setResults] = useState<any[]>([]);
   const [currentSession, setCurrentSession] = useState<any[]>([]);
+  const [selectedType, setSelectedType] = useState<'all' | 'vocab' | 'idiom'>('all');
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
@@ -46,6 +47,10 @@ function QuizContent() {
       });
     }
 
+    if (selectedType !== 'all') {
+      filteredVocab = filteredVocab.filter(v => (v.type || 'vocab') === selectedType);
+    }
+
     const shuffled = filteredVocab.sort(() => Math.random() - 0.5);
     const session = shuffled.slice(0, wordCount).map(item => {
       const otherVocab = vocab.filter(v => v.id !== item.id);
@@ -56,6 +61,10 @@ function QuizContent() {
 
       const distractors = otherVocab
         .filter(v => {
+          const vType = v.type || 'vocab';
+          const matchType = selectedType === 'all' || vType === selectedType;
+          if (!matchType) return false;
+          
           if (direction === 'zh-to-vi') {
             return !v.vietnamese.some(m => item.vietnamese.includes(m));
           } else {
@@ -184,6 +193,31 @@ function QuizContent() {
                   ))}
                 </div>
               </div>
+
+              <div>
+                <label className="block text-xs md:text-sm font-bold text-slate-500 mb-3 uppercase tracking-widest">Loại từ vựng</label>
+                <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-2xl">
+                  {[
+                    { id: 'all', label: 'Tất cả' },
+                    { id: 'vocab', label: 'Từ vựng' },
+                    { id: 'idiom', label: 'Thành ngữ' }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setSelectedType(tab.id as any)}
+                      className={cn(
+                        "py-3 rounded-xl text-xs font-black transition-all",
+                        selectedType === tab.id 
+                          ? "bg-white text-indigo-600 shadow-sm" 
+                          : "text-slate-400 hover:text-slate-600"
+                      )}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               
               <div>
                 <label className="block text-xs md:text-sm font-bold text-slate-500 mb-3 uppercase tracking-widest">Hướng câu hỏi</label>
@@ -246,19 +280,30 @@ function QuizContent() {
               <div className="min-h-[140px] md:min-h-[180px] flex flex-col justify-center items-center">
                 <div className="flex flex-wrap justify-center gap-2 md:gap-4 mb-4 items-center">
                   {currentSession[currentIndex].chinese.map((zh: string, i: number) => (
-                    <span key={i} className={cn(
-                      "font-black text-slate-800 tracking-tighter",
-                      direction === 'zh-to-vi' ? "text-6xl md:text-8xl" : "text-3xl md:text-5xl"
-                    )}>
-                      {zh}{i < currentSession[currentIndex].chinese.length - 1 ? ',' : ''}
-                    </span>
+                    <div key={i} className="flex items-center gap-2 group/item">
+                      <span className={cn(
+                        "font-black text-slate-800 tracking-tighter",
+                        direction === 'zh-to-vi' ? "text-6xl md:text-8xl" : "text-3xl md:text-5xl"
+                      )}>
+                        {zh}{i < currentSession[currentIndex].chinese.length - 1 ? ',' : ''}
+                      </span>
+                      {direction === 'zh-to-vi' && (
+                        <button 
+                          onClick={() => playChinese(zh)}
+                          className="text-slate-300 hover:text-indigo-600 transition p-1 hover:bg-white rounded-lg group-hover/item:text-slate-400"
+                        >
+                          <Volume2 className="w-5 h-5 md:w-6 md:h-6" />
+                        </button>
+                      )}
+                    </div>
                   ))}
                   {direction === 'zh-to-vi' && (
                     <button 
                       onClick={() => playChinese(currentSession[currentIndex].chinese.join(', '))}
-                      className="p-2 md:p-3 bg-indigo-50 text-indigo-600 rounded-xl md:rounded-2xl hover:bg-indigo-600 hover:text-white transition-colors"
+                      className="p-3 md:p-4 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all shadow-lg shadow-indigo-100"
+                      title="Nghe tất cả"
                     >
-                      <Volume2 className="w-5 h-5 md:w-8 md:h-8" />
+                      <Volume2 className="w-6 h-6 md:w-8 md:h-8" />
                     </button>
                   )}
                 </div>
@@ -273,7 +318,7 @@ function QuizContent() {
                   </div>
                 )}
                 <p className="text-lg md:text-2xl text-slate-400 font-bold mt-4 md:mt-6 tracking-widest uppercase">
-                  {direction === 'zh-to-vi' ? currentSession[currentIndex].pinyin : 'Chọn chữ Hán đúng'}
+                  {direction === 'zh-to-vi' ? (Array.isArray(currentSession[currentIndex].pinyin) ? currentSession[currentIndex].pinyin.join(', ') : currentSession[currentIndex].pinyin) : 'Chọn chữ Hán đúng'}
                 </p>
               </div>
             </div>

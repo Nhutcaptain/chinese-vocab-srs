@@ -44,7 +44,7 @@ export const playChinese = async (text: string) => {
   // 1. Stop current playback first
   stopAudio();
 
-  const cleanText = text.split(',')[0].trim();
+  const cleanText = text.trim();
   const encoded = encodeURIComponent(cleanText);
   const timestamp = Date.now();
   const proxyUrl = `/api/tts?text=${encoded}&t=${timestamp}`;

@@ -15,6 +15,7 @@ export default function VocabPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingItem, setEditingItem] = useState<VocabItem | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [activeTab, setActiveTab] = useState<'all' | 'vocab' | 'idiom'>('all');
 
   // Helper to check if any string in an array matches the search
   const matchesSearch = (arr: string[] | string) => {
@@ -22,57 +23,114 @@ export default function VocabPage() {
     return list.some(s => s.toLowerCase().includes(searchTerm.toLowerCase()));
   };
 
-  const filteredVocab = vocab.filter(item => 
-    matchesSearch(item.chinese) ||
-    matchesSearch(item.vietnamese) ||
-    item.pinyin?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const [formData, setFormData] = useState({
-    chinese: '',
-    pinyin: '',
-    vietnamese: ''
+  const filteredVocab = vocab.filter(item => {
+    const chineseMatch = item.chinese.some(zh => zh.toLowerCase().includes(searchTerm.toLowerCase()));
+    const vietnameseMatch = item.vietnamese.some(vi => vi.toLowerCase().includes(searchTerm.toLowerCase()));
+    const pinyinList = Array.isArray(item.pinyin) ? item.pinyin : [item.pinyin];
+    const pinyinMatch = pinyinList.some(p => p?.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesSearch = chineseMatch || vietnameseMatch || pinyinMatch;
+    
+    if (activeTab === 'all') return matchesSearch;
+    const itemType = item.type || 'vocab';
+    return matchesSearch && itemType === activeTab;
   });
 
+  const [formData, setFormData] = useState({
+    chinese: [''],
+    pinyin: [''],
+    vietnamese: [''],
+    type: 'vocab' as 'vocab' | 'idiom'
+  });
+
+  const addInputField = (type: 'chinese' | 'vietnamese') => {
+    if (type === 'chinese') {
+      setFormData(prev => ({
+        ...prev,
+        chinese: [...prev.chinese, ''],
+        pinyin: [...prev.pinyin, '']
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        vietnamese: [...prev.vietnamese, '']
+      }));
+    }
+  };
+
+  const removeInputField = (type: 'chinese' | 'vietnamese', index: number) => {
+    if (type === 'chinese') {
+      setFormData(prev => ({
+        ...prev,
+        chinese: prev.chinese.filter((_, i) => i !== index),
+        pinyin: prev.pinyin.filter((_, i) => i !== index)
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        vietnamese: prev.vietnamese.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const updateInputField = (type: 'chinese' | 'pinyin' | 'vietnamese', index: number, value: string) => {
+    setFormData(prev => {
+      const newArray = [...(prev[type as keyof typeof prev] as string[])];
+      newArray[index] = value;
+      return { ...prev, [type]: newArray };
+    });
+  };
+
   const handleAutoPinyin = () => {
-    if (!formData.chinese) return;
-    // Take the first synonym for pinyin generation
-    const firstZh = formData.chinese.split(',')[0].trim();
-    const generated = pinyin(firstZh, { toneType: 'symbol' });
-    setFormData(prev => ({ ...prev, pinyin: generated }));
+    const generatedPinyin = formData.chinese.map(zh => 
+      zh ? pinyin(zh, { toneType: 'symbol' }) : ''
+    );
+    setFormData(prev => ({ ...prev, pinyin: generatedPinyin }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Split comma strings into arrays and trim whitespace
-    const chineseArr = formData.chinese.split(',').map(s => s.trim()).filter(Boolean);
-    const vietnameseArr = formData.vietnamese.split(',').map(s => s.trim()).filter(Boolean);
+    // Filter empty strings and trim whitespace
+    const chineseArr = formData.chinese.map(s => s.trim()).filter(Boolean);
+    const pinyinArr = formData.pinyin.map(s => s.trim()).filter(Boolean);
+    const vietnameseArr = formData.vietnamese.map(s => s.trim()).filter(Boolean);
+
+    if (chineseArr.length === 0 || vietnameseArr.length === 0) return;
 
     if (editingItem) {
       updateVocab(editingItem.id, {
         chinese: chineseArr,
-        pinyin: formData.pinyin,
-        vietnamese: vietnameseArr
+        pinyin: pinyinArr,
+        vietnamese: vietnameseArr,
+        type: formData.type
       });
       setEditingItem(null);
     } else {
       addVocab({
         chinese: chineseArr,
-        pinyin: formData.pinyin,
-        vietnamese: vietnameseArr
+        pinyin: pinyinArr,
+        vietnamese: vietnameseArr,
+        type: formData.type
       });
       setIsAdding(false);
     }
-    setFormData({ chinese: '', pinyin: '', vietnamese: '' });
+    setFormData({ chinese: [''], pinyin: [''], vietnamese: [''], type: 'vocab' });
+  };
+
+  const closeModal = () => {
+    setIsAdding(false);
+    setEditingItem(null);
+    setFormData({ chinese: [''], pinyin: [''], vietnamese: [''], type: 'vocab' });
   };
 
   const handleEdit = (item: VocabItem) => {
     setEditingItem(item);
     setFormData({
-      chinese: item.chinese.join(', '),
-      pinyin: item.pinyin,
-      vietnamese: item.vietnamese.join(', ')
+      chinese: item.chinese,
+      pinyin: Array.isArray(item.pinyin) ? item.pinyin : [item.pinyin],
+      vietnamese: item.vietnamese,
+      type: item.type || 'vocab'
     });
   };
 
@@ -126,6 +184,28 @@ export default function VocabPage() {
         </div>
       </div>
 
+      {/* Category Tabs */}
+      <div className="flex p-1 bg-slate-100/50 backdrop-blur-md rounded-2xl mb-8 w-fit border border-slate-200/50">
+        {[
+          { id: 'all', label: 'Tất cả' },
+          { id: 'vocab', label: 'Từ vựng' },
+          { id: 'idiom', label: 'Thành ngữ' }
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={cn(
+              "px-6 py-2 rounded-xl text-sm font-black transition-all",
+              activeTab === tab.id 
+                ? "bg-white text-indigo-600 shadow-sm" 
+                : "text-slate-400 hover:text-slate-600"
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Vocab List */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <AnimatePresence>
@@ -136,24 +216,39 @@ export default function VocabPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="glass p-5 rounded-2xl group relative hover:shadow-lg transition-all border border-slate-200"
+              className={cn(
+                "glass p-5 rounded-2xl group relative hover:shadow-lg transition-all border",
+                item.type === 'idiom' ? "border-amber-200/50 bg-amber-50/20" : "border-slate-200"
+              )}
             >
               <div className="flex justify-between items-start mb-3">
-                <div>
-                  <div className="flex flex-wrap gap-1 mb-0.5 items-center">
-                    {item.chinese.map((zh, i) => (
-                      <span key={i} className="text-xl font-bold text-slate-800 dark:text-white">
-                        {zh}{i < item.chinese.length - 1 ? ',' : ''}
-                      </span>
-                    ))}
-                    <button 
-                      onClick={() => playChinese(item.chinese.join(', '))}
-                      className="text-slate-400 hover:text-indigo-600 transition ml-1.5 p-1 hover:bg-indigo-50 rounded-lg"
-                    >
-                       <Volume2 className="w-3.5 h-3.5" />
-                    </button>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider",
+                      item.type === 'idiom' ? "bg-amber-100 text-amber-600" : "bg-indigo-100 text-indigo-600"
+                    )}>
+                      {item.type === 'idiom' ? 'Thành ngữ' : 'Từ vựng'}
+                    </span>
                   </div>
-                  <p className="text-indigo-500 font-bold text-sm tracking-wide">{item.pinyin}</p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mb-0.5 items-center">
+                    {item.chinese.map((zh, i) => (
+                      <div key={i} className="flex items-center gap-1 group/item">
+                        <span className="text-xl font-bold text-slate-800 dark:text-white">
+                          {zh}{i < item.chinese.length - 1 ? ',' : ''}
+                        </span>
+                        <button 
+                          onClick={() => playChinese(zh)}
+                          className="text-slate-300 hover:text-indigo-600 transition p-1 hover:bg-indigo-50 rounded-lg group-hover/item:text-slate-400"
+                        >
+                           <Volume2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-indigo-500 font-bold text-sm tracking-wide">
+                    {Array.isArray(item.pinyin) ? item.pinyin.join(' / ') : item.pinyin}
+                  </p>
                 </div>
                 <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   <button 
@@ -194,7 +289,7 @@ export default function VocabPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => { setIsAdding(false); setEditingItem(null); }}
+              onClick={closeModal}
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
             <motion.div 
@@ -205,69 +300,131 @@ export default function VocabPage() {
             >
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl md:text-2xl font-black">{editingItem ? 'Sửa từ vựng' : 'Thêm từ mới'}</h2>
-                <button onClick={() => { setIsAdding(false); setEditingItem(null); }} className="p-1.5 hover:bg-slate-100 rounded-full transition">
+                <button onClick={closeModal} className="p-1.5 hover:bg-slate-100 rounded-full transition">
                   <X className="w-5 h-5 text-slate-500" />
                 </button>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <div className="flex justify-between mb-2">
-                    <label className="block text-sm font-bold text-slate-500">Tiếng Trung</label>
+                  <label className="block text-sm font-bold text-slate-500 mb-3 uppercase tracking-widest">Loại từ vựng</label>
+                  <div className="grid grid-cols-2 gap-3 p-1 bg-slate-100 rounded-2xl">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, type: 'vocab' }))}
+                      className={cn(
+                        "py-3 rounded-xl text-sm font-black transition-all",
+                        formData.type === 'vocab' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400"
+                      )}
+                    >
+                      Từ vựng
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, type: 'idiom' }))}
+                      className={cn(
+                        "py-3 rounded-xl text-sm font-black transition-all",
+                        formData.type === 'idiom' ? "bg-white text-amber-600 shadow-sm" : "text-slate-400"
+                      )}
+                    >
+                      Thành ngữ
+                    </button>
                   </div>
-                  <input 
-                    required
-                    className="w-full px-5 py-4 bg-slate-100/50 dark:bg-slate-800 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition font-medium"
-                    value={formData.chinese}
-                    onChange={e => setFormData({...formData, chinese: e.target.value})}
-                    placeholder="你好, 您好"
-                  />
                 </div>
+
                 <div>
-                  <div className="flex justify-between mb-2">
-                    <label className="block text-sm font-bold text-slate-500">Pinyin</label>
+                  <div className="flex justify-between mb-2 items-center">
+                    <label className="block text-sm font-bold text-slate-500">Từ vựng & Pinyin</label>
                     <button 
                       type="button"
                       onClick={handleAutoPinyin}
-                      className="text-xs font-black text-indigo-600 flex items-center gap-1 hover:text-indigo-700 transition-colors uppercase tracking-widest"
+                      className="text-[10px] font-black text-indigo-600 flex items-center gap-1 hover:text-indigo-700 transition-colors uppercase tracking-widest"
                     >
-                      <Sparkles className="w-3 h-3" /> Tự động điền
+                      <Sparkles className="w-3 h-3" /> Tự động điền Pinyin
                     </button>
                   </div>
-                  <div className="relative flex items-center">
-                    <input 
-                      required
-                      className="w-full px-5 py-4 bg-slate-100/50 dark:bg-slate-800 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition font-medium pr-14"
-                      value={formData.pinyin}
-                      onChange={e => setFormData({...formData, pinyin: e.target.value})}
-                      placeholder="nǐ hǎo"
-                    />
+                  <div className="space-y-3">
+                    {formData.chinese.map((zh, index) => (
+                      <div key={index} className="space-y-2 p-3 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border border-slate-100/50">
+                        <div className="flex gap-2">
+                          <div className="flex-1 space-y-2">
+                            <input 
+                              required={index === 0}
+                              className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition font-bold"
+                              value={zh}
+                              onChange={e => updateInputField('chinese', index, e.target.value)}
+                              placeholder="Chữ Hán (Ví dụ: 你好)"
+                            />
+                            <div className="relative">
+                              <input 
+                                className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition font-medium text-indigo-500 text-sm"
+                                value={formData.pinyin[index] || ''}
+                                onChange={e => updateInputField('pinyin', index, e.target.value)}
+                                placeholder="Pinyin (Ví dụ: nǐ hǎo)"
+                              />
+                              <button 
+                                type="button"
+                                onClick={() => playChinese(zh)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition"
+                              >
+                                <Volume2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                          {formData.chinese.length > 1 && (
+                            <button 
+                              type="button"
+                              onClick={() => removeInputField('chinese', index)}
+                              className="self-start p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                     <button 
                       type="button"
-                      onClick={() => playChinese(formData.chinese)}
-                      className="absolute right-4 text-slate-400 hover:text-indigo-600 transition p-2"
+                      onClick={() => addInputField('chinese')}
+                      className="w-full py-3 border-2 border-dashed border-indigo-100 text-indigo-600 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-50/50 transition-colors text-sm"
                     >
-                      <Volume2 className="w-5 h-5" />
+                      <Plus className="w-4 h-4" /> Thêm từ đồng nghĩa
                     </button>
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-500 mb-2">Nghĩa tiếng Việt</label>
-                  <input 
-                    required
-                    className="w-full px-5 py-4 bg-slate-100/50 dark:bg-slate-800 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition font-medium"
-                    value={formData.vietnamese}
-                    onChange={e => setFormData({...formData, vietnamese: e.target.value})}
-                    placeholder="Xin chào, Chào bạn"
-                  />
+                  <div className="space-y-2">
+                    {formData.vietnamese.map((vi, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input 
+                          required={index === 0}
+                          className="flex-1 px-5 py-4 bg-slate-100/50 dark:bg-slate-800 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition font-medium"
+                          value={vi}
+                          onChange={e => updateInputField('vietnamese', index, e.target.value)}
+                          placeholder="Ví dụ: Xin chào"
+                        />
+                        {formData.vietnamese.length > 1 && (
+                          <button 
+                            type="button"
+                            onClick={() => removeInputField('vietnamese', index)}
+                            className="p-4 bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-100 transition"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button 
+                      type="button"
+                      onClick={() => addInputField('vietnamese')}
+                      className="w-full py-3 border-2 border-dashed border-indigo-100 text-indigo-600 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-50/50 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" /> Thêm nghĩa
+                    </button>
+                  </div>
                 </div>
                 
-                <div className="bg-indigo-50/50 p-4 rounded-xl flex gap-3 text-indigo-600">
-                  <Info className="w-5 h-5 shrink-0" />
-                  <p className="text-xs font-semibold leading-relaxed">
-                    Bạn có thể nhập nhiều nghĩa hoặc từ đồng nghĩa bằng cách ngăn cách chúng bằng **dấu phẩy (,)**.
-                  </p>
-                </div>
 
                 <button 
                   type="submit"

@@ -1,14 +1,7 @@
 import type { Metadata } from "next";
-import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
 import { UserProvider } from "@/lib/contexts/UserContext";
 import { LoginGuard } from "@/components/LoginGuard";
-
-const beVietnamPro = Be_Vietnam_Pro({
-  subsets: ["vietnamese", "latin"],
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
-  variable: "--font-be-vietnam",
-});
 
 export const metadata: Metadata = {
   title: "Chinese SRS - Học tiếng Trung hiệu quả",
@@ -22,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <body className={`${beVietnamPro.variable} font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900`}>
+      <body className="font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900">
         <UserProvider>
           <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
           <LoginGuard>

@@ -80,7 +80,7 @@ export default function Home() {
     <div className="max-w-6xl mx-auto pt-4 md:pt-8 pb-12 px-4 selection:bg-indigo-100">
       {/* Top Header Bar */}
       <div className="flex justify-between items-center mb-10 sm:mb-12">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-3 bg-white/50 backdrop-blur-md px-4 py-2 rounded-xl border border-white/50 shadow-sm"
