@@ -53,6 +53,14 @@ export default function Home() {
       href: "/review/quiz",
       color: "from-emerald-400 to-teal-700",
       accent: "bg-emerald-500/10 text-emerald-600"
+    },
+    {
+      title: "Luyện dịch AI",
+      description: "Dịch câu thực tế cùng trợ lý AI",
+      icon: Sparkles,
+      href: "/review/translation",
+      color: "from-purple-500 to-indigo-700",
+      accent: "bg-purple-500/10 text-purple-600"
     }
   ];
 
