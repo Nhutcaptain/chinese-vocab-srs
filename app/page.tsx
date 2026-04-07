@@ -1,15 +1,27 @@
 'use client';
 
 import { useVocab } from '@/lib/hooks/useVocab';
-import { BookOpen, Zap, Trophy, Settings, Plus, Sparkles, LayoutGrid, ChevronLeft } from 'lucide-react';
+import { useUser } from '@/lib/contexts/UserContext';
+import { BookOpen, Zap, Trophy, Settings, Plus, Sparkles, LayoutGrid, ChevronLeft, LogOut, User as UserIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { LucideIcon } from 'lucide-react';
+
+interface MenuItem {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  href: string;
+  color: string;
+  accent: string;
+}
 
 export default function Home() {
   const { vocab, loading, streak } = useVocab();
+  const { username, logout } = useUser();
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     {
       title: "Quản lý từ vựng",
       description: "Xem, thêm, sửa, xóa danh sách từ",
@@ -65,18 +77,47 @@ export default function Home() {
   const { todayWords, yesterdayWords } = getFilteredCounts();
 
   return (
-    <div className="max-w-6xl mx-auto pt-16 md:pt-20 pb-12 px-4 selection:bg-indigo-100">
+    <div className="max-w-6xl mx-auto pt-4 md:pt-8 pb-12 px-4 selection:bg-indigo-100">
+      {/* Top Header Bar */}
+      <div className="flex justify-between items-center mb-10 sm:mb-12">
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="flex items-center gap-3 bg-white/50 backdrop-blur-md px-4 py-2 rounded-xl border border-white/50 shadow-sm"
+        >
+          <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-100">
+            <UserIcon className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-[9px] uppercase font-black tracking-widest text-slate-400 leading-none mb-1">Người học</p>
+            <p className="text-xs font-black text-slate-800">{username}</p>
+          </div>
+        </motion.div>
+
+        <motion.button
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={logout}
+          className="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 rounded-xl font-black text-xs hover:bg-rose-600 hover:text-white transition-all shadow-sm border border-rose-100/50"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Đăng xuất</span>
+        </motion.button>
+      </div>
+
       {/* Hero Section */}
-      <div className="mb-16 md:mb-24 text-center relative">
+      <div className="mb-12 md:mb-16 text-center relative">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-40 bg-indigo-500/20 blur-[80px] -z-10 rounded-full"
+          className="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-indigo-500/20 blur-[60px] -z-10 rounded-full"
         />
         <motion.h1
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="text-5xl md:text-8xl font-black mb-8 py-2 leading-tight tracking-tight bg-clip-text text-transparent bg-[linear-gradient(135deg,#6366f1,#ec4899)]"
+          className="text-4xl md:text-6xl font-black mb-6 py-2 leading-tight tracking-tight bg-clip-text text-transparent bg-[linear-gradient(135deg,#6366f1,#ec4899)]"
         >
           Hán Ngữ SRS Cho Yuxin
         </motion.h1>
@@ -84,62 +125,63 @@ export default function Home() {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="text-lg md:text-2xl text-slate-500 font-medium max-w-2xl mx-auto dark:text-slate-400"
+          className="text-base md:text-xl text-slate-500 font-medium max-w-2xl mx-auto dark:text-slate-400"
         >
           Làm chủ tiếng Trung mỗi ngày với phương pháp lặp lại ngắt quãng và các bài tập tương tác sinh động.
         </motion.p>
       </div>
 
       {/* Stats Quick View */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
         <motion.div
           whileHover={{ y: -5 }}
-          className="glass p-8 rounded-[2.5rem] flex items-center justify-between group overflow-hidden relative"
+          className="glass p-6 rounded-2xl flex items-center justify-between group overflow-hidden relative"
         >
           <div className="relative z-10">
-            <p className="text-slate-400 font-bold uppercase tracking-wider text-xs mb-1">Tổng từ vựng</p>
-            <p className="text-5xl font-black text-indigo-600">{loading ? '...' : vocab.length}</p>
+            <p className="text-slate-400 font-bold uppercase tracking-wider text-[10px] mb-1">Tổng từ vựng</p>
+            <p className="text-4xl font-black text-indigo-600">{loading ? '...' : vocab.length}</p>
           </div>
-          <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 relative z-10 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-500">
-            <BookOpen className="w-8 h-8" />
+          <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 relative z-10 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-500">
+            <BookOpen className="w-6 h-6" />
           </div>
-          <Sparkles className="absolute -right-4 -bottom-4 w-32 h-32 text-indigo-500/5 group-hover:text-indigo-500/10 transition-colors" />
+          <Sparkles className="absolute -right-4 -bottom-4 w-24 h-24 text-indigo-500/5 group-hover:text-indigo-500/10 transition-colors" />
         </motion.div>
 
         <motion.div
           whileHover={{ y: -5 }}
-          className="glass p-8 rounded-[2.5rem] flex items-center justify-between group overflow-hidden relative"
+          className="glass p-6 rounded-2xl flex items-center justify-between group overflow-hidden relative"
         >
           <div className="relative z-10">
-            <p className="text-slate-400 font-bold uppercase tracking-wider text-xs mb-1">Trình độ</p>
-            <p className="text-5xl font-black text-rose-500">HSK 4+</p>
+            <p className="text-slate-400 font-bold uppercase tracking-wider text-[10px] mb-1">Trình độ</p>
+            <p className="text-4xl font-black text-rose-500">HSK 4+</p>
           </div>
-          <div className="w-16 h-16 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 relative z-10 group-hover:bg-rose-600 group-hover:text-white transition-colors duration-500">
-            <Trophy className="w-8 h-8" />
+          <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 relative z-10 group-hover:bg-rose-600 group-hover:text-white transition-colors duration-500">
+            <Trophy className="w-6 h-6" />
           </div>
         </motion.div>
 
         <motion.div
           whileHover={{ y: -5 }}
-          className="glass p-8 rounded-[2.5rem] flex items-center justify-between group overflow-hidden relative"
+          className="glass p-6 rounded-2xl flex items-center justify-between group overflow-hidden relative"
         >
           <div className="relative z-10">
-            <p className="text-slate-400 font-bold uppercase tracking-wider text-xs mb-1">Chuỗi ngày học</p>
-            <p className="text-5xl font-black text-amber-500">{loading ? '...' : streak}</p>
+            <p className="text-slate-400 font-bold uppercase tracking-wider text-[10px] mb-1">Chuỗi ngày học</p>
+            <p className="text-4xl font-black text-amber-500">{loading ? '...' : streak}</p>
           </div>
-          <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 relative z-10 group-hover:bg-amber-600 group-hover:text-white transition-colors duration-500">
-            <Zap className="w-8 h-8" />
+          <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 relative z-10 group-hover:bg-amber-600 group-hover:text-white transition-colors duration-500">
+            <Zap className="w-6 h-6" />
           </div>
         </motion.div>
       </div>
 
       {/* Quick Practice Section */}
-      <div className="mb-12 md:mb-16">
+      <div className="mb-10 md:mb-12">
         <div className="flex items-center gap-3 mb-6 md:mb-8">
-          <div className="h-6 md:h-8 w-2 bg-indigo-600 rounded-full" />
-          <h2 className="text-2xl md:text-3xl font-black tracking-tight">Ôn tập nhanh</h2>
+          <div className="h-6 md:h-8 w-1.5 bg-indigo-600 rounded-full" />
+          <h2 className="text-xl md:text-2xl font-black tracking-tight">Ôn tập nhanh</h2>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
           <Link href={`/review/flashcards?filter=today`} className={cn("block group", todayWords === 0 && "pointer-events-none opacity-60")}>
             <div className="glass p-8 rounded-[2.5rem] flex items-center justify-between border-2 border-transparent hover:border-indigo-200 transition-all shadow-lg hover:shadow-2xl">
               <div>
