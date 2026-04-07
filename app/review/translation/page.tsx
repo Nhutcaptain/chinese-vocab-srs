@@ -50,16 +50,19 @@ function TranslationContent() {
         body: JSON.stringify({ username, mode, topic, count }),
       });
 
-      if (!res.ok) throw new Error("Failed to generate");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to generate");
+      }
       const data = await res.json();
       setExercises(data);
       setGameState('practice');
       setCurrentIndex(0);
       setHistory([]);
       setScore(0);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Có lỗi xảy ra khi tạo bài tập. Vui lòng thử lại!");
+      alert(e.message || "Có lỗi xảy ra khi tạo bài tập. Vui lòng thử lại!");
     } finally {
       setLoading(false);
     }
@@ -67,19 +70,22 @@ function TranslationContent() {
 
   const handleCheck = async () => {
     if (!userInput.trim()) return;
-    
+
     setIsChecking(true);
     try {
       const res = await fetch('/api/evaluate-translation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          vietnamese: exercises[currentIndex].vietnamese, 
-          userInput: userInput.trim() 
+        body: JSON.stringify({
+          vietnamese: exercises[currentIndex].vietnamese,
+          userInput: userInput.trim()
         }),
       });
 
-      if (!res.ok) throw new Error("Evaluation failed");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Evaluation failed");
+      }
       const evaluation = await res.json();
       
       setCurrentEvaluation(evaluation);
@@ -88,9 +94,9 @@ function TranslationContent() {
       if (evaluation.isCorrect) {
         setScore(s => s + 1);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Không thể đánh giá bài làm lúc này. Vui lòng thử lại!");
+      alert(e.message || "Không thể đánh giá bài làm lúc này. Vui lòng thử lại!");
     } finally {
       setIsChecking(false);
     }
@@ -98,10 +104,10 @@ function TranslationContent() {
 
   const nextQuestion = () => {
     const current = exercises[currentIndex];
-    setHistory([...history, { 
-      ...current, 
-      userInput, 
-      evaluation: currentEvaluation 
+    setHistory([...history, {
+      ...current,
+      userInput,
+      evaluation: currentEvaluation
     }]);
 
     if (currentIndex + 1 < exercises.length) {
@@ -119,8 +125,8 @@ function TranslationContent() {
     return (
       <div className="flex flex-wrap gap-0.5 text-2xl md:text-3xl font-bold tracking-tight">
         {diff.map((part, i) => (
-          <span 
-            key={i} 
+          <span
+            key={i}
             className={cn(
               part.type === 'added' && "text-emerald-500 bg-emerald-50 px-0.5 rounded",
               part.type === 'removed' && "text-rose-500 bg-rose-50 px-0.5 rounded line-through opacity-50",
@@ -145,7 +151,7 @@ function TranslationContent() {
 
       <AnimatePresence mode="wait">
         {gameState === 'settings' && (
-          <motion.div 
+          <motion.div
             key="settings"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -161,7 +167,7 @@ function TranslationContent() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div 
+              <div
                 onClick={() => setMode('topic')}
                 className={cn(
                   "p-6 rounded-2xl border-4 cursor-pointer transition-all space-y-3",
@@ -173,7 +179,7 @@ function TranslationContent() {
                 <p className="text-xs text-slate-500 font-medium leading-relaxed">Nhập bất kỳ chủ đề nào (văn phòng, du lịch, hẹn hò...)</p>
               </div>
 
-              <div 
+              <div
                 onClick={() => setMode('recent')}
                 className={cn(
                   "p-6 rounded-2xl border-4 cursor-pointer transition-all space-y-3",
@@ -190,8 +196,8 @@ function TranslationContent() {
               {mode === 'topic' && (
                 <div className="space-y-3">
                   <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-2">Chủ đề của bạn</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
                     placeholder="Ví dụ: Phỏng vấn xin việc, Đi ăn nhà hàng..."
@@ -204,7 +210,7 @@ function TranslationContent() {
                 <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-2">Số lượng câu</label>
                 <div className="grid grid-cols-4 gap-4">
                   {[5, 10, 15, 20].map(n => (
-                    <button 
+                    <button
                       key={n}
                       onClick={() => setCount(n)}
                       className={cn(
@@ -219,7 +225,7 @@ function TranslationContent() {
               </div>
             </div>
 
-            <button 
+            <button
               disabled={loading}
               onClick={startPractice}
               className={cn(
@@ -238,7 +244,7 @@ function TranslationContent() {
         )}
 
         {gameState === 'practice' && exercises.length > 0 && (
-          <motion.div 
+          <motion.div
             key="practice"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -246,26 +252,26 @@ function TranslationContent() {
           >
             {/* Progress Header */}
             <div className="flex flex-col md:flex-row justify-between w-full glass p-6 rounded-[2rem] gap-4 relative overflow-hidden">
-               <div className="absolute top-0 left-0 h-1 bg-indigo-600 shadow-lg" style={{ width: `${((currentIndex + 1) / exercises.length) * 100}%` }} />
-               <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-black text-xl">
-                    {currentIndex + 1}
-                 </div>
-                 <div>
-                    <h4 className="font-black text-slate-800 uppercase text-xs tracking-widest">Tiến độ</h4>
-                    <p className="text-slate-400 font-bold ml-0.5">{currentIndex + 1} / {exercises.length}</p>
-                 </div>
-               </div>
-               <div className="flex items-center gap-8 pr-4">
-                  <div className="text-center">
-                    <p className="text-[10px] font-black text-emerald-500 uppercase">Đúng</p>
-                    <p className="text-xl font-black">{score}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] font-black text-slate-300 uppercase">Còn lại</p>
-                    <p className="text-xl font-black text-slate-300">{exercises.length - currentIndex}</p>
-                  </div>
-               </div>
+              <div className="absolute top-0 left-0 h-1 bg-indigo-600 shadow-lg" style={{ width: `${((currentIndex + 1) / exercises.length) * 100}%` }} />
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-black text-xl">
+                  {currentIndex + 1}
+                </div>
+                <div>
+                  <h4 className="font-black text-slate-800 uppercase text-xs tracking-widest">Tiến độ</h4>
+                  <p className="text-slate-400 font-bold ml-0.5">{currentIndex + 1} / {exercises.length}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-8 pr-4">
+                <div className="text-center">
+                  <p className="text-[10px] font-black text-emerald-500 uppercase">Đúng</p>
+                  <p className="text-xl font-black">{score}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] font-black text-slate-300 uppercase">Còn lại</p>
+                  <p className="text-xl font-black text-slate-300">{exercises.length - currentIndex}</p>
+                </div>
+              </div>
             </div>
 
             {/* Question Card */}
@@ -277,7 +283,7 @@ function TranslationContent() {
               </div>
 
               <div className="space-y-4">
-                <textarea 
+                <textarea
                   disabled={isChecked}
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
@@ -285,13 +291,13 @@ function TranslationContent() {
                   className={cn(
                     "w-full h-28 px-6 py-5 rounded-2xl text-xl font-bold bg-slate-50 border-4 outline-none transition-all resize-none",
                     !isChecked ? "border-slate-100 focus:border-indigo-300 focus:bg-white" : "",
-                    isChecked && userInput.trim() === exercises[currentIndex].chinese ? "border-emerald-500 bg-emerald-50" : "",
-                    isChecked && userInput.trim() !== exercises[currentIndex].chinese ? "border-rose-500 bg-rose-50" : ""
+                    isChecked && currentEvaluation?.score >= 80 ? "border-emerald-500 bg-emerald-50" : "",
+                    isChecked && currentEvaluation?.score < 80 ? "border-rose-500 bg-rose-50" : ""
                   )}
                 />
 
                 {!isChecked ? (
-                  <button 
+                  <button
                     onClick={handleCheck}
                     disabled={!userInput.trim() || isChecking}
                     className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-xl flex items-center justify-center gap-3 hover:bg-black active:scale-95 transition-all shadow-xl disabled:opacity-30"
@@ -309,7 +315,7 @@ function TranslationContent() {
                     )}
                   </button>
                 ) : (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-6"
@@ -318,21 +324,21 @@ function TranslationContent() {
                       {/* Correct Answer Column (Always Visible) */}
                       <div className="p-5 bg-emerald-50/50 rounded-2xl border-2 border-emerald-100 space-y-2 relative overflow-hidden">
                         <div className="flex items-center gap-2 mb-1">
-                           <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                           <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Đáp án gợi ý</p>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Đáp án gợi ý</p>
                         </div>
                         <div className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
                           {currentEvaluation?.suggested || exercises[currentIndex].chinese}
                         </div>
                         <div className="flex items-center gap-2 text-emerald-700/70 font-bold text-xs">
-                           <Volume2 className="w-3.5 h-3.5" />
-                           <span>{currentEvaluation?.pinyin || exercises[currentIndex].pinyin}</span>
-                           <button 
-                            onClick={() => playChinese(currentEvaluation?.suggested || exercises[currentIndex].chinese)} 
+                          <Volume2 className="w-3.5 h-3.5" />
+                          <span>{currentEvaluation?.pinyin || exercises[currentIndex].pinyin}</span>
+                          <button
+                            onClick={() => playChinese(currentEvaluation?.suggested || exercises[currentIndex].chinese)}
                             className="ml-auto p-1 bg-white rounded-lg hover:bg-emerald-100 transition shadow-sm"
-                           >
-                              <Volume2 className="w-4 h-4 text-emerald-600" />
-                           </button>
+                          >
+                            <Volume2 className="w-4 h-4 text-emerald-600" />
+                          </button>
                         </div>
                       </div>
 
@@ -342,22 +348,22 @@ function TranslationContent() {
                         currentEvaluation?.score >= 80 ? "bg-emerald-50/50 border-emerald-100" : "bg-rose-50/50 border-rose-100"
                       )}>
                         <div className="flex items-center justify-between mb-1">
-                           <div className="flex items-center gap-2">
-                             {currentEvaluation?.score >= 80 
-                              ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> 
+                          <div className="flex items-center gap-2">
+                            {currentEvaluation?.score >= 80
+                              ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                               : <XCircle className="w-4 h-4 text-rose-500" />
-                             }
-                             <p className={cn(
-                               "text-[10px] font-black uppercase tracking-widest",
-                               currentEvaluation?.score >= 80 ? "text-emerald-600" : "text-rose-600"
-                             )}>Bài làm của bạn</p>
-                           </div>
-                           <div className={cn(
-                             "px-2 py-0.5 rounded-full text-[10px] font-black",
-                             currentEvaluation?.score >= 80 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                           )}>
-                             {currentEvaluation?.score}%
-                           </div>
+                            }
+                            <p className={cn(
+                              "text-[10px] font-black uppercase tracking-widest",
+                              currentEvaluation?.score >= 80 ? "text-emerald-600" : "text-rose-600"
+                            )}>Bài làm của bạn</p>
+                          </div>
+                          <div className={cn(
+                            "px-2 py-0.5 rounded-full text-[10px] font-black",
+                            currentEvaluation?.score >= 80 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                          )}>
+                            {currentEvaluation?.score}%
+                          </div>
                         </div>
                         <div className="min-h-[2.5rem] flex items-center">
                           {currentEvaluation?.score >= 80 ? (
@@ -367,11 +373,11 @@ function TranslationContent() {
                           )}
                         </div>
                         {currentEvaluation?.score >= 80 && (
-                          <button 
-                            onClick={() => playChinese(userInput)} 
+                          <button
+                            onClick={() => playChinese(userInput)}
                             className="text-[10px] font-bold text-emerald-600 hover:underline flex items-center gap-1 mt-1"
                           >
-                             <Volume2 className="w-3 h-3" /> Nghe bài của bạn
+                            <Volume2 className="w-3 h-3" /> Nghe bài của bạn
                           </button>
                         )}
                       </div>
@@ -380,26 +386,26 @@ function TranslationContent() {
                     {/* AI Feedback & Explanation */}
                     <div className="p-6 bg-white rounded-2xl border-2 border-slate-100 shadow-xl shadow-slate-100/50 space-y-4">
                       <div className="flex items-center gap-3 border-b border-slate-50 pb-3">
-                         <div className="p-2 bg-amber-100 rounded-lg">
-                            <Info className="w-4 h-4 text-amber-600" />
-                         </div>
-                         <div>
-                            <h5 className="font-black text-slate-800 text-sm">AI Nhận xét & Ngữ pháp</h5>
-                         </div>
+                        <div className="p-2 bg-amber-100 rounded-lg">
+                          <Info className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div>
+                          <h5 className="font-black text-slate-800 text-sm">AI Nhận xét & Ngữ pháp</h5>
+                        </div>
                       </div>
-                      
+
                       <div className="space-y-4">
                         <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-sm font-bold text-slate-600 italic leading-relaxed">
                           "{currentEvaluation?.feedback}"
                         </div>
-                        
+
                         <div className="text-slate-700 leading-relaxed font-medium text-sm md:text-base whitespace-pre-line">
                           {currentEvaluation?.grammarAnalysis}
                         </div>
                       </div>
                     </div>
 
-                    <button 
+                    <button
                       onClick={nextQuestion}
                       className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xl shadow-xl shadow-indigo-100 flex items-center justify-center gap-4 transition-all hover:bg-indigo-700 hover:scale-[1.02]"
                     >
@@ -414,7 +420,7 @@ function TranslationContent() {
         )}
 
         {gameState === 'results' && (
-          <motion.div 
+          <motion.div
             key="results"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -448,13 +454,13 @@ function TranslationContent() {
             </div>
 
             <div className="space-y-4 pt-4">
-              <button 
+              <button
                 onClick={() => setGameState('settings')}
                 className="w-full py-6 bg-indigo-600 text-white rounded-2xl font-black text-xl flex items-center justify-center gap-4 transition-all hover:bg-indigo-700 hover:scale-[1.02] shadow-xl shadow-indigo-100"
               >
                 <RotateCcw className="w-6 h-6" /> Luyện tập tiếp
               </button>
-              <Link 
+              <Link
                 href="/"
                 className="block w-full py-6 glass rounded-2xl font-black text-xl transition-all hover:bg-white border-2 border-slate-50"
               >
