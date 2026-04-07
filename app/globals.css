@@ -1,0 +1,92 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f7f9fc;
+  --foreground: #1e293b;
+  --primary: #6366f1;
+  --secondary: #ec4899;
+  --accent: #06b6d4;
+  --card-bg: rgba(255, 255, 255, 0.8);
+  --card-border: rgba(255, 255, 255, 0.5);
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --primary: #818cf8;
+  --secondary: #f472b6;
+  --accent: #22d3ee;
+  --card-bg: rgba(30, 41, 59, 0.7);
+  --card-border: rgba(255, 255, 255, 0.1);
+  --shadow: 0 10px 15px -3px rgb(0 0 0 / 0.4);
+}
+
+@theme {
+  --font-sans: var(--font-be-vietnam);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+.glass {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow);
+  @apply p-6 md:p-8 rounded-2xl md:rounded-[3rem] transition-all duration-300;
+}
+
+.btn-primary {
+  @apply bg-[#6366f1] text-white px-6 py-3 md:py-2 rounded-xl transition hover:opacity-90 active:scale-95 font-bold;
+}
+
+.h-screen-safe {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Custom Scrollbar for better UI on all platforms */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}

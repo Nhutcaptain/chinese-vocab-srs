@@ -1,0 +1,18 @@
+export interface VocabItem {
+  id: string;
+  chinese: string[]; // Support multiple synonyms
+  pinyin: string;
+  vietnamese: string[]; // Support multiple meanings
+  createdAt: number;
+  updatedAt?: number;
+  lastReview?: number;
+  level: number;
+}
+
+export type ReviewMode = 'flashcards' | 'quick' | 'quiz';
+
+export interface ReviewSessionSettings {
+  count: number;
+  timeLimit: number; // in seconds
+  mode: ReviewMode;
+}
